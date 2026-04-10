@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Премьеры - LOVE cinema{% endblock %}
+
+{% block content %}
+<div class="premiere-container">
+    <h2 class="section-title">Премьеры</h2>
+
+    <!-- 🔹 ПРОВЕРКА: есть ли премьеры -->
+    {% if grouped_premieres %}
+        {% for date, films in grouped_premieres.items() %}
+        <h3 class="date-heading">{{ date }}</h3>
+        <div class="film-row">
+            {% for film in films %}
+            <div class="film-card mini">
+                <div class="film-poster">
+                    <!-- Постер с заглушкой -->
+                    <img src="{{ url_for('static', filename='img/films/' + film.id|string + '.jpg') }}" 
+                         alt="{{ film.title }}"
+                         class="film-poster-img"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="poster-placeholder" style="display:none;">🎬</div>
+                </div>
+                <div class="film-info">
+                    <h4>{{ film.title }}</h4>
+                    <span class="film-badge format">{{ film.genre }}</span>
+                    <a href="{{ url_for('buy_ticket', film_id=film.id) }}" class="btn-sm">Купить билет</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- 🔹 Если премьер нет -->
+        <p class="empty-state">Сейчас нет запланированных премьер.</p>
+    {% endif %}
+
+    <!-- Форма напоминания -->
+    <div class="reminder-form-section">
+        <h3 class="section-title">Напомнить о премьере</h3>
+        <form method="POST" class="reminder-form">
+            <div class="form-group">
+                <label>Фильм</label>
+                <select name="film_id" required>
+                    <option value="">Выберите фильм</option>
+                    {% for f in films %}
+                    <option value="{{ f.id }}">{{ f.title }} ({{ f.date_range }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Дата напоминания</label>
+                    <input type="date" name="reminder_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Время напоминания</label>
+                    <input type="time" name="reminder_time" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Мобильный телефон</label>
+                <input type="tel" name="phone" value="{{ current_user.cinema_user.phone }}" required>
+            </div>
+            <button type="submit" class="btn">Напомнить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

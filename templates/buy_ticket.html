@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Покупка: {{ film.title }}{% endblock %}
+
+{% block content %}
+<div class="booking-container">
+    <h2 class="section-title">Покупка: {{ film.title }}</h2>
+    <p class="film-desc">{{ film.genre }} | {{ film.event }} | {{ film.date_range }}</p>
+    
+    <form method="POST" class="booking-form">
+        <div class="form-group">
+            <label>Выберите зал</label>
+            <select name="hall_id" required>
+                {% for h in halls %}
+                <option value="{{ h.id }}">{{ h.name }} ({{ h.capacity }} мест)</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Дата</label>
+                <input type="text" name="date" placeholder="дд.мм.гггг" required>
+            </div>
+            <div class="form-group">
+                <label>Время</label>
+                <input type="text" name="time" placeholder="чч:мм" required>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn">Далее: Выбор места</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль - LOVE cinema{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h2 class="section-title">Профиль</h2>
+    
+    <div class="profile-info">
+        <div class="info-row"><span>Имя:</span> {{ user.name }}</div>
+        <div class="info-row"><span>Email:</span> {{ user.email }}</div>
+        <div class="info-row"><span>Мобильный номер:</span> {{ user.phone }}</div>
+        <div class="info-row"><span>Дата рождения:</span> {{ user.birth_date }}</div>
+    </div>
+
+    <h3 class="section-title" style="margin-top: 2rem;">Мои билеты</h3>
+    <table class="tickets-table">
+        <thead>
+            <tr>
+                <th>Название фильма</th>
+                <th>Дата и время</th>
+                <th>Детали</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tickets %}
+            <tr>
+                <td>{{ t.film_title }}</td>
+                <td>{{ t.date }} {{ t.time }}</td>
+                <td>{{ t.hall }}, ряд {{ t.row }}, место {{ t.seat }} | {{ t.price }} руб.</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" class="empty-state">Билетов пока нет. Пора в кино! 🎬</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="section-title" style="margin-top: 2rem;">Архив</h3>
+    <p class="empty-state">Информация отсутствует. Скоро исправим!</p>
+</div>
+{% endblock %}
