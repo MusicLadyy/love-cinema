@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Покупка билета - {{ film.title }}{% endblock %}
+
+{% block content %}
+<div class="booking-container">
+    <h2 class="section-title">{{ film.title }}</h2>
+    <p class="film-desc">{{ film.genre }} | {{ film.event }} | {{ film.date_range }}</p>
+    
+    <form method="POST" class="booking-form">
+        <div class="form-group">
+            <label>Выберите дату *</label>
+            <select name="date" id="dateSelect" required onchange="updateTimes()">
+                <option value="">Выберите дату</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Выберите время *</label>
+            <select name="time" id="timeSelect" required disabled>
+                <option value="">Сначала выберите дату</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Выберите зал *</label>
+            <select name="hall_id" required>
+                {% for hall in halls %}
+                <option value="{{ hall.id }}">{{ hall.name }} ({{ hall.capacity }} мест)</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="btn">Перейти к выбору мест</button>
+    </form>
+</div>
+
+<script>
+// === ГЕНЕРАЦИЯ ДАТ И ВРЕМЕНИ ===
+
+// Парсим диапазон дат (например: "15-20 апреля" или "1-5 мая")
+const dateRangeStr = "{{ film.date_range }}";
+const filmId = {{ film.id }};
+
+// Месяцы на русском
+const months = {
+    'января': '01', 'февраля': '02', 'марта': '03', 'апреля': '04',
+    'мая': '05', 'июня': '06', 'июля': '07', 'августа': '08',
+    'сентября': '09', 'октября': '10', 'ноября': '11', 'декабря': '12'
+};
+
+function parseDateRange(rangeStr) {
+    const dates = [];
+    console.log('📅 Исходный диапазон:', rangeStr);
+    
+    // Формат 1: "15.03-30.03" (день.месяц - день.месяц)
+    const matchDots = rangeStr.match(/(\d{2})\.(\d{2})-(\d{2})\.(\d{2})/);
+    if (matchDots) {
+        const startDay = parseInt(matchDots[1]);
+        const startMonth = matchDots[2];
+        const endDay = parseInt(matchDots[3]);
+        const endMonth = matchDots[4];
+        
+        console.log('✅ Распаршено как DD.MM-DD.MM:', { startDay, startMonth, endDay, endMonth });
+        
+        // Если месяцы одинаковые
+        if (startMonth === endMonth) {
+            for (let day = startDay; day <= endDay; day++) {
+                dates.push(`${day.toString().padStart(2, '0')}.${startMonth}.2026`);
+            }
+        } else {
+            // Если месяцы разные (например, 28.03-05.04)
+            const startDate = new Date(2026, parseInt(startMonth) - 1, startDay);
+            const endDate = new Date(2026, parseInt(endMonth) - 1, endDay);
+            
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const day = d.getDate().toString().padStart(2, '0');
+                const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                dates.push(`${day}.${month}.2026`);
+            }
+        }
+        return dates;
+    }
+    
+    // Формат 2: "15-30 марта" (день-день месяц)
+    const matchWords = rangeStr.match(/(\d+)-(\d+)\s+(\w+)/i);
+    if (matchWords) {
+        const startDay = parseInt(matchWords[1]);
+        const endDay = parseInt(matchWords[2]);
+        const monthRu = matchWords[3].toLowerCase();
+        const monthNum = months[monthRu] || '04';
+        
+        console.log('✅ Распаршено как DD-DD месяц:', { startDay, endDay, monthRu, monthNum });
+        
+        for (let day = startDay; day <= endDay; day++) {
+            dates.push(`${day.toString().padStart(2, '0')}.${monthNum}.2026`);
+        }
+        return dates;
+    }
+    
+    // Формат 3: "15 марта - 30 марта" (день месяц - день месяц)
+    const matchFull = rangeStr.match(/(\d+)\s+(\w+)\s*-\s*(\d+)\s+(\w+)/i);
+    if (matchFull) {
+        const startDay = parseInt(matchFull[1]);
+        const startMonthRu = matchFull[2].toLowerCase();
+        const endDay = parseInt(matchFull[3]);
+        const endMonthRu = matchFull[4].toLowerCase();
+        
+        const startMonth = months[startMonthRu] || '04';
+        const endMonth = months[endMonthRu] || '04';
+        
+        console.log('✅ Распаршено как DD месяц - DD месяц:', { startDay, startMonth, endDay, endMonth });
+        
+        if (startMonth === endMonth) {
+            for (let day = startDay; day <= endDay; day++) {
+                dates.push(`${day.toString().padStart(2, '0')}.${startMonth}.2026`);
+            }
+        } else {
+            const startDate = new Date(2026, parseInt(startMonth) - 1, startDay);
+            const endDate = new Date(2026, parseInt(endMonth) - 1, endDay);
+            
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const day = d.getDate().toString().padStart(2, '0');
+                const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                dates.push(`${day}.${month}.2026`);
+            }
+        }
+        return dates;
+    }
+    
+    // Если не распарсилось — берем сегодня + 6 дней
+    console.warn('⚠️ Не удалось распарсить, используем даты по умолчанию');
+    for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        dates.push(`${day}.${month}.2026`);
+    }
+    
+    return dates;
+}
+
+
+// Времена для показа (можно настроить под каждый фильм)
+const timesByDate = {
+    '15.04.2026': ['10:00', '15:00'],
+    '16.04.2026': ['12:00', '18:00'],
+    '17.04.2026': ['14:00', '20:00'],
+    'default': ['14:00', '17:00', '20:00']
+};
+
+// Заполняем даты при загрузке
+const dates = parseDateRange(dateRangeStr);
+const dateSelect = document.getElementById('dateSelect');
+
+dates.forEach(date => {
+    const option = document.createElement('option');
+    option.value = date;
+    option.textContent = date;
+    dateSelect.appendChild(option);
+});
+
+// Обновление времени при выборе даты
+function updateTimes() {
+    const selectedDate = dateSelect.value;
+    const timeSelect = document.getElementById('timeSelect');
+    
+    // Очищаем
+    timeSelect.innerHTML = '';
+    
+    if (!selectedDate) {
+        timeSelect.disabled = true;
+        timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+        return;
+    }
+    
+    // Берем времена (если есть для конкретной даты, иначе default)
+    const times = timesByDate[selectedDate] || timesByDate['default'];
+    
+    times.forEach(time => {
+        const option = document.createElement('option');
+        option.value = time;
+        option.textContent = time;
+        timeSelect.appendChild(option);
+    });
+    
+    timeSelect.disabled = false;
+}
+</script>
+{% endblock %}

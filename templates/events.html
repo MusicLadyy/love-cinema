@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Мероприятия - LOVE cinema{% endblock %}
+
+{% block content %}
+<div class="events-container">
+    <h2 class="section-title">Мероприятия</h2>
+
+    <!-- Предложение месяца -->
+    <div class="promo-banner">
+        <div class="promo-text">
+            <h3>🎉 Предложение месяца!</h3>
+            <p>Зал «Малый» на 3 часа всего за <strong>2500 руб.</strong></p>
+            <small>* При заказе от 2 часов — попкорн в подарок</small>
+        </div>
+    </div>
+
+    <!-- Наши залы -->
+    <h3 class="section-title">Наши залы</h3>
+    <div class="halls-grid">
+        {% for hall in halls %}
+        <div class="hall-card">
+            <h4>{{ hall.name }}</h4>
+            <p>Вместимость: до <strong>{{ hall.capacity }}</strong> человек</p>
+            <p>Аренда: <strong>{{ hall.price_per_hour }}</strong> руб./час</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Калькулятор -->
+    <div class="calculator-section">
+        <h3 class="section-title">Калькулятор стоимости</h3>
+        <form method="POST" class="calculator-form" id="rentalForm">
+            <div class="form-group">
+                <label>Зал *</label>
+                <select name="hall_id" id="hallSelect" required>
+                    <option value="">Выберите зал</option>
+                    {% for h in halls %}
+                    <option value="{{ h.id }}" data-price="{{ h.price_per_hour }}">{{ h.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Количество человек</label>
+                    <input type="number" name="people" min="1" placeholder="до вместимости зала">
+                </div>
+                <div class="form-group">
+                    <label>Время (часы) *</label>
+                    <input type="number" name="hours" id="hoursInput" min="1" max="8" value="1" required>
+                </div>
+            </div>
+
+            
+	    <div class="form-group">
+    <label>Дополнительные опции:</label>
+    <div class="checkbox-group">
+        <label class="checkbox-label-enhanced">
+            <input type="checkbox" name="options" value="Проектор">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">+ Украсить шариками (500₽)</span>
+        </label>
+        <label class="checkbox-label-enhanced">
+            <input type="checkbox" name="options" value="Звук">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">+ Поздравление на экране (500₽)</span>
+        </label>
+        <label class="checkbox-label-enhanced">
+            <input type="checkbox" name="options" value="Кейтеринг">
+            <span class="checkbox-custom"></span>
+            <span class="checkbox-text">+ Кейтеринг (500₽)</span>
+        </label>
+    </div>
+</div>
+
+
+            <div class="form-group">
+                <label>Примечания</label>
+                <textarea name="notes" rows="3" placeholder="Пожелания по мероприятию..." maxlength="100"></textarea>
+            </div>
+
+            <div class="calculator-total">
+                Итого: <strong id="totalPrice">0</strong> руб.
+            </div>
+
+            <button type="submit" class="btn">Оставить заявку</button>
+            <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">
+                * С ассортиментом можно ознакомиться во вкладке Меню
+            </small>
+        </form>
+    </div>
+</div>
+
+<!-- JS для калькулятора -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const hallSelect = document.getElementById('hallSelect');
+    const hoursInput = document.getElementById('hoursInput');
+    const totalDisplay = document.getElementById('totalPrice');
+    const checkboxes = document.querySelectorAll('input[name="options"]');
+
+    function calculateTotal() {
+        const hallOption = hallSelect.options[hallSelect.selectedIndex];
+        const pricePerHour = parseInt(hallOption.dataset.price) || 0;
+        const hours = parseInt(hoursInput.value) || 1;
+        const optionsCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        
+        const base = pricePerHour * hours;
+        const options = optionsCount * 500;
+        totalDisplay.textContent = base + options;
+    }
+
+    hallSelect.addEventListener('change', calculateTotal);
+    hoursInput.addEventListener('input', calculateTotal);
+    checkboxes.forEach(cb => cb.addEventListener('change', calculateTotal));
+});
+</script>
+{% endblock %}

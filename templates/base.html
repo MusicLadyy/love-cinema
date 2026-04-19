@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LOVE cinema{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <header>
+        <a href="/" class="logo">LOVE cinema</a>
+        
+        <nav class="header-nav">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('profile') }}">Профиль</a>
+            <a href="{{ url_for('premiere') }}">Премьера</a>
+            <a href="{{ url_for('events') }}">Мероприятия</a>
+            <a href="{{ url_for('menu') }}">Меню</a>
+            
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_panel') }}" style="color: #ff6b6b; font-weight: bold;">Админ</a>
+            {% endif %}
+            
+            <a href="{{ url_for('logout') }}" class="logout-link">Выход</a>
+        {% else %}
+            <a href="{{ url_for('premiere') }}">Премьера</a>
+            <a href="{{ url_for('events') }}">Мероприятия</a>
+            <a href="{{ url_for('menu') }}">Меню</a>
+        {% endif %}
+        
+        {% if not current_user.is_authenticated %}
+        <button type="button" class="login-btn" onclick="toggleLoginPanel()" title="Войти / Регистрация">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </button>
+        {% endif %}
+    </nav>
+    </header>
+
+    <!-- ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ СВЕРХУ (5 секунд) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="topNotification" class="top-notification {% if messages[0][0] == 'error' %}notification-error{% else %}notification-success{% endif %}">
+            <div class="notification-icon">{% if messages[0][0] == 'error' %}❌{% else %}✅{% endif %}</div>
+            <div class="notification-text">
+                {% for category, message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Выезжающая панель входа -->
+    <div class="side-panel" id="loginPanel">
+        <div class="panel-overlay" onclick="toggleLoginPanel()"></div>
+        <div class="panel-content">
+            <button class="close-panel" onclick="toggleLoginPanel()">×</button>
+            
+            <!-- Форма входа -->
+            <div id="loginForm">
+                <h2>Вход</h2>
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="form-group">
+                        <label for="phone">Введите номер телефона*</label>
+                        <input type="tel" id="phone" name="phone" placeholder="+7 926 000 00 00" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="code">Введите код*</label>
+                        <input type="text" id="code" name="code" placeholder="1288" maxlength="4" required>
+                        <small style="color: var(--text-secondary); display: block; margin-top: 0.25rem;">
+                            Для разработки: код всегда <strong>1288</strong> (админ: <strong>0812</strong>)
+                        </small>
+                    </div>
+                    <button type="submit" class="btn">Войти</button>
+                </form>
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
+                    Еще нет аккаунта? 
+                    <a href="#" onclick="showRegisterForm()" style="color: var(--accent-red); text-decoration: none; font-weight: bold;">Зарегистрироваться</a>
+                </p>
+            </div>
+            
+            <!-- Форма регистрации -->
+            <div id="registerForm" style="display: none;">
+                <h2>Регистрация</h2>
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="form-group">
+                        <label>Имя*</label>
+                        <input type="text" name="name" required maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Email*</label>
+                        <input type="email" name="email" required maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Повторите Email*</label>
+                        <input type="email" name="email_confirm" required maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Мобильный номер*</label>
+                        <input type="tel" name="phone" required maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Дата рождения (дд.мм.гггг)*</label>
+                        <input type="text" name="birth_date" placeholder="дд.мм.гггг" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="agreement1" required>
+                            Я прочитал и согласен с правилами Программы Лояльности
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="agreement2" required>
+                            Я прочитал и согласен с правилами обработки персональных данных
+                        </label>
+                    </div>
+                    <button type="submit" class="btn">Зарегистрироваться</button>
+                </form>
+                <p style="text-align: center; margin-top: 1.5rem; color: var(--text-secondary);">
+                    Уже есть аккаунт? 
+                    <a href="#" onclick="showLoginForm()" style="color: var(--accent-red); text-decoration: none; font-weight: bold;">Войти</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Местоположение</h4>
+                <p>г. Москва, ул. Примерная, д. 123</p>
+            </div>
+            <div class="footer-section">
+                <h4>Контакты</h4>
+                <p>+7 (926) 111 22 33</p>
+                <p>love@cinema.ru</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>LOVE cinema &copy; 2026</p>
+        </div>
+    </footer>
+
+    <script>
+    function toggleLoginPanel() {
+        const panel = document.getElementById('loginPanel');
+        if (panel) {
+            panel.classList.toggle('active');
+        }
+    }
+
+    function showRegisterForm() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+    }
+
+    function showLoginForm() {
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginForm').style.display = 'block';
+    }
+
+    // ✅ Автоматическое скрытие уведомления через 5 секунд
+    document.addEventListener('DOMContentLoaded', () => {
+        const notification = document.getElementById('topNotification');
+        if (notification) {
+            // Показываем с анимацией
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            // Скрываем через 5 секунд
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification) notification.remove();
+                }, 500);
+            }, 5000);
+        }
+    });
+    </script>
+
+<script>
+// === АВТО-МАСКИ И ВАЛИДАЦИЯ ДАТЫ/ВРЕМЕНИ ===
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInputs = document.querySelectorAll('.date-input');
+    const timeInputs = document.querySelectorAll('.time-input');
+
+    // Форматирование даты DD.MM.YYYY
+    dateInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length > 8) val = val.slice(0, 8);
+            
+            let formatted = '';
+            if (val.length > 0) formatted += val.slice(0, 2);
+            if (val.length >= 3) formatted += '.' + val.slice(2, 4);
+            if (val.length >= 5) formatted += '.' + val.slice(4, 8);
+            
+            e.target.value = formatted;
+            validateDate(input);
+        });
+    });
+
+    // Форматирование времени HH:MM
+    timeInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length > 4) val = val.slice(0, 4);
+            
+            let formatted = '';
+            if (val.length > 0) formatted += val.slice(0, 2);
+            if (val.length >= 3) formatted += ':' + val.slice(2, 4);
+            
+            e.target.value = formatted;
+            validateTime(input);
+        });
+    });
+
+    function validateDate(input) {
+        const parts = input.value.split('.');
+        if (parts.length === 3) {
+            const d = parseInt(parts[0]), m = parseInt(parts[1]), y = parseInt(parts[2]);
+            if (y !== 2026) { input.setCustomValidity('Год должен быть 2026'); return; }
+            if (m < 1 || m > 12) { input.setCustomValidity('Месяц от 1 до 12'); return; }
+            if (d < 1 || d > 31) { input.setCustomValidity('День от 1 до 31'); return; }
+            input.setCustomValidity('');
+        }
+    }
+
+    function validateTime(input) {
+        const parts = input.value.split(':');
+        if (parts.length === 2) {
+            const h = parseInt(parts[0]), m = parseInt(parts[1]);
+            if (h > 23) { input.setCustomValidity('Часы от 00 до 23'); return; }
+            if (m > 59) { input.setCustomValidity('Минуты от 00 до 59'); return; }
+            input.setCustomValidity('');
+        }
+    }
+});
+</script>
+
+</body>
+</html>

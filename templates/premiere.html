@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Премьеры - LOVE cinema{% endblock %}
+
+{% block content %}
+<div class="premiere-container">
+    <h2 class="section-title">Скоро в кино</h2>
+    <p class="premiere-desc">Успейте установить напоминание, чтобы не пропустить!</p>
+
+    {% if films %}
+     <div class="films-grid">
+     	{% for film in films %}
+        <div class="film-card premiere-card">
+            <div class="film-poster">
+                <img src="{{ url_for('static', filename='img/films/' + film.id|string + '.jpg') }}" 
+                     alt="{{ film.title }}"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div class="poster-placeholder" style="display:none;">🎬</div>
+            </div>
+            <div class="film-info">
+                <h3 class="film-title">{{ film.title }}</h3>
+                <div class="film-meta">
+                    <span class="badge genre">{{ film.genre }}</span>
+                    <!-- ✅ Используем функцию для красивого формата даты -->
+                    <span class="badge date">{{ format_premiere_date(film.date_range) }}</span>
+                </div>
+                <button type="button" class="btn-remind" onclick="openReminderPanel({{ film.id }}, '{{ film.title }}')">
+                    🔔 Напомнить о премьере
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state"><p>На данный момент нет запланированных премьер.</p></div>
+    {% endif %}
+</div>
+
+<!--  ПАНЕЛЬ НАПОМИНАНИЯ (Плавное появление) -->
+<div id="reminderOverlay" class="reminder-overlay" onclick="closeReminderPanel()"></div>
+<div id="reminderPanel" class="reminder-panel">
+    <div class="panel-header">
+        <h3> Напоминание</h3>
+        <button class="close-btn" onclick="closeReminderPanel()">×</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('set_reminder') }}" class="reminder-form">
+        <input type="hidden" name="film_id" id="reminderFilmId">
+
+        <div class="form-group">
+            <label>Фильм</label>
+            <input type="text" id="reminderFilmName" readonly 
+                   style="background: #1a1a1a; color: var(--accent-red); font-weight: bold; cursor: not-allowed;">
+        </div>
+
+        <div class="form-group">
+            <label>Дата напоминания *</label>
+            <input type="date" name="reminder_date" class="date-input" required>
+        </div>
+
+        <div class="form-group">
+            <label>Время напоминания *</label>
+            <input type="time" name="reminder_time" class="time-input" required>
+        </div>
+
+        <div class="form-group">
+            <label>Ваш телефон *</label>
+            <input type="tel" name="phone" value="{{ current_user.cinema_user.phone if current_user.is_authenticated else '' }}" 
+                   placeholder="+7 926..." required maxlength="60">
+        </div>
+
+        <button type="submit" class="btn btn-block">Установить напоминание</button>
+        <small style="color: var(--text-secondary); display: block; margin-top: 1rem; text-align: center;">
+            Мы пришлем уведомление заранее
+        </small>
+    </form>
+</div>
+
+<style>
+/* Стили для страницы премьер */
+.premiere-container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; position: relative; }
+.premiere-desc { color: var(--text-secondary); margin-bottom: 2rem; }
+.films-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2rem; }
+
+/* Карточки фильмов */
+.premiere-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; }
+.premiere-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(139, 0, 0, 0.2); }
+.film-poster { height: 350px; background: #111; position: relative; overflow: hidden; }
+.film-poster img { width: 100%; height: 100%; object-fit: cover; }
+.poster-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #333; }
+.film-info { padding: 1.5rem; text-align: center; }
+.film-title { margin-bottom: 0.5rem; font-size: 1.2rem; min-height: 3rem; }
+
+/* Бейджи */
+.film-meta { margin-bottom: 1.2rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
+.badge { padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+.badge.genre { background: #2a0000; color: #ff4d4d; }
+/* Стиль для даты премьеры */
+.badge.date { background: #0a1a2a; color: #4d9fff; font-size: 0.9rem; }
+
+.btn-remind { width: 100%; padding: 0.8rem; background: transparent; border: 2px solid var(--accent-red); color: var(--accent-red); border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.btn-remind:hover { background: var(--accent-red); color: white; }
+
+/* ✅ ОБНОВЛЕННАЯ БОКОВАЯ ПАНЕЛЬ (Квадратнее и выше) */
+.reminder-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); z-index: 1999;
+    opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+}
+.reminder-overlay.active { opacity: 1; pointer-events: auto; }
+
+.reminder-panel {
+    position: fixed; 
+    top: 20px; /*  Поднято выше (было 100px) */
+    right: 40px;
+    height: auto;
+    max-height: calc(100vh - 60px);
+    width: 400px; /*  Шире, чтобы было более квадратно (было 380px) */
+    max-width: 90%;
+    background: var(--bg-card); 
+    border: 1px solid var(--accent-red);
+    border-radius: 16px; padding: 2rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); z-index: 2000;
+    opacity: 0; transform: scale(0.95);
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.reminder-panel.active { opacity: 1; transform: scale(1); pointer-events: auto; }
+
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+.close-btn { background: none; border: none; color: var(--text-secondary); font-size: 2rem; cursor: pointer; line-height: 1; }
+.close-btn:hover { color: var(--accent-red); }
+.reminder-form .form-group { margin-bottom: 1.2rem; }
+.reminder-form label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+.reminder-form input { width: 100%; padding: 0.8rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); }
+.reminder-form input:focus { outline: none; border-color: var(--accent-red); }
+.btn-block { width: 100%; padding: 1rem; margin-top: 0.5rem; }
+
+@media (max-width: 768px) {
+    .reminder-panel { top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); right: auto; }
+    .reminder-panel.active { transform: translate(-50%, -50%) scale(1); }
+}
+</style>
+
+
+<script>
+function openReminderPanel(filmId, filmTitle) {
+    document.getElementById('reminderFilmId').value = filmId;
+    document.getElementById('reminderFilmName').value = filmTitle;
+    document.getElementById('reminderPanel').classList.add('active');
+    document.getElementById('reminderOverlay').classList.add('active');
+    // Минимальная дата - сегодня
+    document.querySelector('input[name="reminder_date"]').min = new Date().toISOString().split('T')[0];
+}
+
+function closeReminderPanel() {
+    document.getElementById('reminderPanel').classList.remove('active');
+    document.getElementById('reminderOverlay').classList.remove('active');
+}
+
+// Закрытие по Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeReminderPanel();
+});
+</script>
+{% endblock %}

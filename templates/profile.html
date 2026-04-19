@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль - {{ user.name }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <h2 class="section-title">Мой профиль</h2>
+
+    <!-- Информация и Форма редактирования -->
+    <div class="profile-layout">
+        <div class="profile-info">
+            <h3>Личные данные</h3>
+            <!-- Форма редактирования (используем скрытое поле для PATCH имитации) -->
+            <form method="POST" action="{{ url_for('edit_profile') }}" style="margin-top: 1rem;">
+                <input type="hidden" name="_method" value="PATCH">
+                
+                <div class="form-group">
+                    <label>Имя</label>
+                    <input type="text" name="name" value="{{ user.name }}" maxlength="60" required>
+                </div>
+                <div class="form-group">
+                    <label>Телефон</label>
+                    <input type="tel" name="phone" value="{{ user.phone }}" maxlength="60" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ user.email }}" maxlength="60">
+                </div>
+                <button type="submit" class="btn btn-sm">💾 Сохранить изменения</button>
+            </form>
+        </div>
+
+        <div class="profile-stats">
+            <h3>Статистика</h3>
+            <p>Билетов куплено: <strong>{{ tickets|length }}</strong></p>
+            <p>Роль: <strong>{% if user.is_admin %}Администратор{% else %}Зритель{% endif %}</strong></p>
+        </div>
+    </div>
+
+    <!-- Таблица билетов -->
+        <!-- Таблица билетов -->
+    <h3 class="section-title" style="margin-top: 2rem;">Мои билеты</h3>
+    
+    {% if tickets %}
+    <div class="table-wrapper">
+        <table class="admin-table full-width">
+            <thead>
+                <tr>
+                    <th>Фильм</th>
+                    <th>Зал</th>
+                    <th>Дата / Время</th>
+                    <th>Место</th>
+                    <th>Цена</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tickets %}
+                <tr>
+                    <td>{{ t.film_title }}</td>
+                    <td>{{ t.hall }}</td>
+                    <td>{{ t.date }} в {{ t.time }}</td>
+                    <td>Ряд {{ t.row }}, Место {{ t.seat }}</td>
+                    <td>{{ t.price }} ₽</td>
+                    <td>
+                        <!-- Кнопка возврата (БЕЗ формы вокруг!) -->
+                        <button type="button" class="btn-remove" onclick="showReturnModal({{ t.id }})">
+                            Вернуть
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="empty-state">У вас пока нет купленных билетов.</div>
+    {% endif %}
+</div>
+
+<!-- ✅ МОДАЛЬНОЕ ОКНО (ВЫНЕСЕНО ЗА ПРЕДЕЛЫ ЦИКЛА!) -->
+<!-- Один экземпляр на всю страницу -->
+<div id="returnModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box-return">
+        <div class="modal-icon-return">↩️</div>
+        <h3>Возврат билета</h3>
+        <p>Вы уверены, что хотите вернуть билет?</p>
+        <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeReturnModal()">Отмена</button>
+            <!-- Форма отправки -->
+            <form method="POST" action="" id="returnForm">
+                <button type="submit" class="btn-confirm">Да, вернуть</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Доп. стили для профиля */
+    .profile-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
+    .profile-stats { background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content; }
+    .profile-stats p { margin-bottom: 0.5rem; color: var(--text-secondary); }
+    .profile-stats strong { color: var(--text-primary); }
+    
+    @media (max-width: 768px) { .profile-layout { grid-template-columns: 1fr; } }
+
+    /* Стили кнопки возврата */
+    .btn-remove {
+        background: #b71c1c;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+    .btn-remove:hover {
+        background: #d32f2f;
+        transform: translateY(-2px);
+    }
+</style>
+
+<script>
+function showReturnModal(ticketId) {
+    // Динамически подставляем ID билета в action формы
+    document.getElementById('returnForm').action = '/ticket/' + ticketId;
+    document.getElementById('returnModal').style.display = 'flex';
+}
+
+function closeReturnModal() {
+    document.getElementById('returnModal').style.display = 'none';
+}
+
+// Закрытие по клику вне окна
+document.getElementById('returnModal').addEventListener('click', function(e) {
+    if (e.target === this) closeReturnModal();
+});
+</script>
+
+
+
+{% endblock %}

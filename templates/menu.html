@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}Меню и Корзина - LOVE cinema{% endblock %}
+
+{% block content %}
+<div class="menu-container">
+    <h2 class="section-title">Меню</h2>
+    <p class="menu-desc">Онлайн-меню. Закажите еду и Вам принесут её прямо в кинозал!*</p>
+
+    <div class="menu-layout">
+        <!-- Список еды -->
+        <div class="menu-list">
+            {% for food in menu_items %}
+            <div class="menu-item">
+                <span>{{ food.name }}</span>
+                <form method="POST" class="add-form">
+                    <input type="hidden" name="food_id" value="{{ food.id }}">
+                    <input type="hidden" name="action" value="add">
+                    <button type="submit" class="btn-plus">+</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Корзина -->
+        <div class="cart-panel">
+            <h3 class="cart-title">Корзина</h3>
+            
+            {% if cart %}
+                <div class="cart-items">
+                    {% for item in cart %}
+                    <div class="cart-item">
+                        <span>{{ item.name }} ×{{ item.quantity }}</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="cart-item-price">{{ item.price * item.quantity }} ₽</span>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="food_id" value="{{ item.id }}">
+                                <input type="hidden" name="action" value="remove">
+                                <button type="submit" class="btn-remove">−</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="cart-total">Итого: {{ cart_total }} ₽</div>
+
+                <!-- Форма оплаты -->
+                <form method="POST" action="{{ url_for('menu') }}" class="checkout-form" id="paymentForm">
+                    <input type="hidden" name="action" value="order">
+                    
+                    <div class="delivery-options">
+                        <label class="radio-label">
+                            <input type="radio" name="delivery_type" value="self" checked onchange="toggleDeliveryFields()">
+                            Заберу сам
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="delivery_type" value="hall" onchange="toggleDeliveryFields()">
+                            Принести в зал
+                        </label>
+                    </div>
+
+                    <!-- Поля для доставки в зал -->
+                    <div id="hall-delivery-fields" class="hidden">
+                        <div class="form-group">
+                            <label>Фильм (по вашим билетам) *</label>
+                            <select name="session_film" id="foodFilmSelect" required onchange="updateFoodDates()" disabled>
+                                <option value="">Сначала выберите "Принести в зал"</option>
+                                <!-- Сюда JS подставит только фильмы с билетами -->
+                            </select>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Дата *</label>
+                                <select name="session_date" id="foodDateSelect" required onchange="updateFoodTimes()" disabled>
+                                    <option value="">Сначала выберите фильм</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Время *</label>
+                                <select name="session_time" id="foodTimeSelect" required disabled>
+                                    <option value="">Сначала выберите дату</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Место (ряд/место) *</label>
+                            <input type="text" name="session_seat" placeholder="Например: 5/12" required maxlength="20">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-pay">💳 Оплатить заказ</button>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem; text-align: center;">
+                        * Оплата откроется в новой вкладке
+                    </small>
+                </form>
+                
+            {% else %}
+                <p class="empty-cart">Корзина пуста. Добавьте что-нибудь вкусное! 🍿</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Скрытые данные для JS -->
+<script>
+    // ✅ СПИСОК ID ФИЛЬМОВ, НА КОТОРЫЕ ЕСТЬ БИЛЕТЫ (передается из Python)
+    const USER_TICKET_FILM_IDS = {{ user_ticket_film_ids | tojson }};
+    
+    // ✅ ПОЛНЫЙ СПИСОК ФИЛЬМОВ (для получения дат)
+    const ALL_FILMS_DATA = {{ films_data | tojson }};
+    
+    // 🔗 ССЫЛКА НА ОПЛАТУ
+    const PAYMENT_URL = 'https://www.tinkoff.ru/rm/r_BleCAybEsC.ZirtaPyZfs/Lwo3R19320';
+</script>
+
+<style>
+/* ... Стили остаются теми же, что и в предыдущем варианте ... */
+.menu-container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+.menu-desc { color: var(--text-secondary); margin-bottom: 2rem; font-style: italic; }
+.menu-layout { display: grid; grid-template-columns: 1fr 380px; gap: 2rem; }
+@media (max-width: 900px) { .menu-layout { grid-template-columns: 1fr; } }
+.menu-list { display: grid; gap: 0.8rem; }
+.menu-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 1rem 1.2rem; border-radius: 8px; border: 1px solid var(--border-color); transition: border-color 0.2s; }
+.menu-item:hover { border-color: var(--accent-red); }
+.btn-plus { background: var(--accent-red); color: white; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+.btn-plus:hover { background: #990000; transform: scale(1.1); }
+.cart-panel { background: var(--bg-card); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); height: fit-content; position: sticky; top: 100px; }
+.cart-title { color: var(--accent-red); margin-bottom: 1rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-color); }
+.cart-items { max-height: 320px; overflow-y: auto; margin-bottom: 1rem; scrollbar-width: none; }
+.cart-items::-webkit-scrollbar { display: none; }
+.cart-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0; border-bottom: 1px dashed var(--border-color); font-size: 0.95rem; }
+.btn-remove { background: transparent; border: 1px solid #ff5252; color: #ff5252; width: 28px; height: 28px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+.btn-remove:hover { background: #ff5252; color: white; }
+.cart-total { font-size: 1.3rem; font-weight: bold; text-align: right; margin: 1rem 0; color: var(--text-primary); border-top: 2px solid var(--border-color); padding-top: 1rem; }
+.delivery-options { display: flex; gap: 1.5rem; margin-bottom: 1.2rem; }
+.radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary); font-size: 0.95rem; }
+.radio-label input { accent-color: var(--accent-red); width: 18px; height: 18px; }
+.hidden { display: none !important; }
+#hall-delivery-fields { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border-color); }
+#hall-delivery-fields .form-group { margin-bottom: 1rem; }
+#hall-delivery-fields label { display: block; margin-bottom: 0.4rem; color: var(--text-secondary); font-size: 0.9rem; }
+#hall-delivery-fields select, #hall-delivery-fields input { width: 100%; padding: 0.7rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.95rem; }
+#hall-delivery-fields select:focus, #hall-delivery-fields input:focus { outline: none; border-color: var(--accent-red); }
+.btn-pay { background: #2e7d32; width: 100%; padding: 1rem; margin-top: 0.5rem; font-weight: 600; font-size: 1.05rem; }
+.btn-pay:hover { background: #1b5e20; }
+.empty-cart { text-align: center; color: var(--text-secondary); padding: 2rem 0; font-style: italic; }
+</style>
+
+<script>
+// Переключение полей доставки
+// Переключение полей доставки
+function toggleDeliveryFields() {
+    const hallFields = document.getElementById('hall-delivery-fields');
+    const filmSelect = document.getElementById('foodFilmSelect');
+    const dateSelect = document.getElementById('foodDateSelect');
+    const timeSelect = document.getElementById('foodTimeSelect');
+    const seatInput = document.querySelector('[name="session_seat"]');
+    
+    const isHall = document.querySelector('input[name="delivery_type"]:checked').value === 'hall';
+    
+    hallFields.classList.toggle('hidden', !isHall);
+    
+    if (isHall) {
+        // Если выбрана доставка в зал
+        populateUserFilms();
+        filmSelect.disabled = false;
+        filmSelect.required = true;
+        dateSelect.required = true;
+        timeSelect.required = true;
+        seatInput.required = true;
+    } else {
+        // Если "Заберу сам" — отключаем required и очищаем поля
+        filmSelect.disabled = true;
+        filmSelect.required = false;
+        filmSelect.value = '';
+        
+        dateSelect.disabled = true;
+        dateSelect.required = false;
+        dateSelect.value = '';
+        
+        timeSelect.disabled = true;
+        timeSelect.required = false;
+        timeSelect.value = '';
+        
+        seatInput.required = false;
+        seatInput.value = '';
+    }
+}
+
+// Заполнение списка фильмов, на которые есть билеты
+function populateUserFilms() {
+    const filmSelect = document.getElementById('foodFilmSelect');
+    filmSelect.innerHTML = '<option value="">Выберите фильм</option>';
+    
+    let hasTickets = false;
+    
+    // Проходим по всем фильмам и проверяем, есть ли ID в списке купленных
+    ALL_FILMS_DATA.forEach(film => {
+        if (USER_TICKET_FILM_IDS.includes(film.id)) {
+            const option = document.createElement('option');
+            option.value = film.title;
+            option.dataset.range = film.date_range; // Сохраняем даты для следующего шага
+            option.textContent = `${film.title} (${film.date_range})`;
+            filmSelect.appendChild(option);
+            hasTickets = true;
+        }
+    });
+    
+    if (!hasTickets) {
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "У вас нет билетов на текущие сеансы";
+        option.disabled = true;
+        filmSelect.appendChild(option);
+        alert("Для заказа в зал необходимо сначала купить билет на сеанс!");
+    }
+}
+
+// === ГЕНЕРАЦИЯ ДАТ И ВРЕМЕНИ (как в buy_ticket) ===
+const months = {
+    'января': '01', 'февраля': '02', 'марта': '03', 'апреля': '04',
+    'мая': '05', 'июня': '06', 'июля': '07', 'августа': '08',
+    'сентября': '09', 'октября': '10', 'ноября': '11', 'декабря': '12'
+};
+
+function parseDateRange(rangeStr) {
+    const dates = [];
+    const matchDots = rangeStr.match(/(\d{2})\.(\d{2})-(\d{2})\.(\d{2})/);
+    if (matchDots) {
+        const startDay = parseInt(matchDots[1]);
+        const startMonth = matchDots[2];
+        const endDay = parseInt(matchDots[3]);
+        const endMonth = matchDots[4];
+        
+        if (startMonth === endMonth) {
+            for (let day = startDay; day <= endDay; day++) {
+                dates.push(`${day.toString().padStart(2, '0')}.${startMonth}.2026`);
+            }
+        }
+        return dates;
+    }
+    
+    const matchWords = rangeStr.match(/(\d+)-(\d+)\s+(\w+)/i);
+    if (matchWords) {
+        const startDay = parseInt(matchWords[1]);
+        const endDay = parseInt(matchWords[2]);
+        const monthRu = matchWords[3].toLowerCase();
+        const monthNum = months[monthRu] || '06';
+        for (let day = startDay; day <= endDay; day++) {
+            dates.push(`${day.toString().padStart(2, '0')}.${monthNum}.2026`);
+        }
+        return dates;
+    }
+    return [];
+}
+
+function updateFoodDates() {
+    const filmSelect = document.getElementById('foodFilmSelect');
+    const dateSelect = document.getElementById('foodDateSelect');
+    const timeSelect = document.getElementById('foodTimeSelect');
+    
+    const selectedOption = filmSelect.options[filmSelect.selectedIndex];
+    const dateRange = selectedOption?.dataset.range;
+    
+    dateSelect.innerHTML = '<option value="">Выберите дату</option>';
+    timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+    timeSelect.disabled = true;
+    
+    if (!dateRange) {
+        dateSelect.disabled = true;
+        return;
+    }
+    
+    const dates = parseDateRange(dateRange);
+    dates.forEach(date => {
+        const option = document.createElement('option');
+        option.value = date;
+        option.textContent = date;
+        dateSelect.appendChild(option);
+    });
+    
+    dateSelect.disabled = false;
+}
+
+function updateFoodTimes() {
+    const dateSelect = document.getElementById('foodDateSelect');
+    const timeSelect = document.getElementById('foodTimeSelect');
+    const selectedDate = dateSelect.value;
+    
+    timeSelect.innerHTML = '';
+    if (!selectedDate) {
+        timeSelect.disabled = true;
+        timeSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+        return;
+    }
+    
+    const times = ['14:00', '17:00', '20:00'];
+    times.forEach(time => {
+        const option = document.createElement('option');
+        option.value = time;
+        option.textContent = time;
+        timeSelect.appendChild(option);
+    });
+    timeSelect.disabled = false;
+}
+
+
+// === ОБРАБОТКА ОПЛАТЫ ===
+const paymentForm = document.getElementById('paymentForm');
+
+if (paymentForm) {
+    paymentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const form = e.target;  // Это форма
+        const btn = form.querySelector('.btn-pay');
+        const originalText = btn.textContent;
+        
+        // ✅ ПРОВЕРКА: получаем URL как строку
+        const actionUrl = form.getAttribute('action');
+        console.log('📤 Отправка на URL:', actionUrl);  // Для отладки
+        
+        if (!actionUrl || actionUrl.includes('[object')) {
+            alert('Ошибка: неверный URL формы');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
+        
+        // Валидация полей
+        const deliveryType = form.querySelector('input[name="delivery_type"]:checked')?.value;
+        if (deliveryType === 'hall') {
+            const film = form.querySelector('[name="session_film"]')?.value;
+            const date = form.querySelector('[name="session_date"]')?.value;
+            const time = form.querySelector('[name="session_time"]')?.value;
+            const seat = form.querySelector('[name="session_seat"]')?.value;
+            
+            if (!film || !date || !time || !seat) {
+                alert('Заполните все поля для доставки в зал!');
+                btn.disabled = false;
+                btn.textContent = originalText;
+                return;
+            }
+        }
+        
+        btn.disabled = true;
+        btn.textContent = '⏳ Оформление...';
+        
+        try {
+            // ✅ Используем actionUrl (строку), а не form (элемент)
+            const response = await fetch(actionUrl, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            // Проверяем, что ответ — JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const errorText = await response.text();
+                console.error('❌ Сервер вернул не JSON:', errorText.substring(0, 200));
+                throw new Error('Сервер вернул ошибку. Проверьте консоль Python.');
+            }
+
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                // ✅ Открываем оплату в НОВОЙ вкладке
+                const paymentUrl = data.payment_url || 'https://www.tinkoff.ru/rm/r_BleCAybEsC.ZirtaPyZfs/Lwo3R19320';
+                window.open(paymentUrl, '_blank');
+                
+                // ✅ Показываем сообщение
+                showOrderSuccess();
+                
+                // Очищаем корзину визуально
+                document.querySelector('.cart-items').innerHTML = '<p class="empty-cart">Заказ оформлен! ✓</p>';
+                document.querySelector('.cart-total').style.display = 'none';
+                form.style.display = 'none';
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось оформить заказ'));
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch (err) {
+            console.error('❌ Fetch failed:', err);
+            alert('Ошибка соединения: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+} else {
+    console.error('❌ Форма #paymentForm не найдена!');
+}
+ 
+   
+function showOrderSuccess() {
+    const msg = document.createElement('div');
+    msg.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+        background: var(--bg-card); border: 3px solid #4caf50; padding: 2.5rem;
+        border-radius: 15px; text-align: center; z-index: 10000; opacity: 0;
+        transition: all 0.4s ease; box-shadow: 0 20px 60px rgba(76, 175, 80, 0.4);
+        max-width: 90%; width: 400px;
+    `;
+    msg.innerHTML = `
+        <div style="font-size:3.5rem; margin-bottom:0.5rem;">✅</div>
+        <h3 style="color:#4caf50; margin-bottom:0.5rem;">Заказ оформлен!</h3>
+        <p style="color:var(--text-secondary);">Открыта новая вкладка для оплаты</p>
+    `;
+    document.body.appendChild(msg);
+    
+    requestAnimationFrame(() => {
+        msg.style.opacity = '1';
+        msg.style.transform = 'translate(-50%, -50%) scale(1)';
+    });
+    
+    setTimeout(() => {
+        msg.style.opacity = '0';
+        msg.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        setTimeout(() => msg.remove(), 400);
+    }, 10000); // 10 секунд
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    toggleDeliveryFields();
+});
+</script>
+{% endblock %}
